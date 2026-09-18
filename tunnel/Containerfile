@@ -1,0 +1,4 @@
+FROM alpine:3.21
+RUN apk add --no-cache openssh-client && adduser -D -u 10001 tunnel
+USER 10001
+ENTRYPOINT ["ssh", "-N", "-L", "127.0.0.1:13306:192.168.1.10:3306", "-i", "/run/ssh/ssh-privatekey", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=/run/ssh/known_hosts", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3", "-o", "ExitOnForwardFailure=yes", "hkl@192.168.1.100"]

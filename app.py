@@ -20,13 +20,15 @@ ENABLED_VALUES = {"Y", "N"}
 def credential_config() -> dict[str, object]:
     """Return DB settings without ever logging credentials."""
     path = Path(os.environ.get("MARIADB_CREDENTIALS_FILE", "/run/secrets/mariadb-credentials"))
-    host = os.environ.get("MARIADB_HOST", "")
+    configured_host = os.environ.get("MARIADB_HOST", "")
+    host = configured_host
     username = os.environ.get("MARIADB_USER", "")
     password = os.environ.get("MARIADB_PASSWORD", "")
     if path.is_file():
         fields = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
         if len(fields) == 3:
-            host, username, password = fields
+            file_host, username, password = fields
+            host = configured_host or file_host
         elif len(fields) == 2:
             username, password = fields
         else:
@@ -96,12 +98,9 @@ def headers(response):
 
 @APP.get("/healthz")
 def healthz():
-    try:
-        with db() as connection, connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        return jsonify(status="ok")
-    except Exception:
-        return jsonify(status="unavailable"), 503
+    # Keep the process probe independent from database availability. CRUD APIs
+    # surface database failures to the authenticated caller without restart loops.
+    return jsonify(status="ok")
 
 
 @APP.get("/")

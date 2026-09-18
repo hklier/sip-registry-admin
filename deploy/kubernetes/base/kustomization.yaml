@@ -6,4 +6,4 @@ resources:
   - service.yaml
 images:
   - name: 192.168.2.240:5000/sip-registry-admin
-    newTag: 1.0.0
+    newTag: 1.0.1
