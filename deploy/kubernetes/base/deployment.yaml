@@ -67,7 +67,7 @@ spec:
             requests: { cpu: 50m, memory: 96Mi }
             limits: { cpu: 500m, memory: 192Mi }
         - name: ssh-tunnel
-          image: 192.168.2.240:5000/sip-registry-ssh-tunnel:1.0.0
+          image: 192.168.2.240:5000/sip-registry-ssh-tunnel:1.0.1
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -78,33 +78,12 @@ spec:
             runAsUser: 10001
             runAsGroup: 10001
           volumeMounts:
-            - name: ssh-runtime
+            - name: ssh-key
               mountPath: /run/ssh
-              readOnly: true
-            - name: ssh-source
-              mountPath: /run/ssh-source
               readOnly: true
           resources:
             requests: { cpu: 20m, memory: 32Mi }
             limits: { cpu: 100m, memory: 64Mi }
-      initContainers:
-        - name: prepare-ssh-key
-          image: alpine:3.21
-          command: ["sh", "-c", "cp /run/ssh-source/ssh-privatekey /run/ssh/ssh-privatekey && chmod 0400 /run/ssh/ssh-privatekey && cp /run/ssh-source/known_hosts /run/ssh/known_hosts"]
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
-          volumeMounts:
-            - name: ssh-runtime
-              mountPath: /run/ssh
-            - name: ssh-source
-              mountPath: /run/ssh-source
-              readOnly: true
       volumes:
         - name: temporary-files
           emptyDir:
@@ -115,9 +94,6 @@ spec:
         - name: database-credentials
           secret:
             secretName: sip-registry-admin-db
-        - name: ssh-source
+        - name: ssh-key
           secret:
             secretName: sip-registry-admin-ssh
-        - name: ssh-runtime
-          emptyDir:
-            medium: Memory

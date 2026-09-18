@@ -1,4 +1,4 @@
-FROM alpine:3.21
-RUN apk add --no-cache openssh-client && adduser -D -u 10001 tunnel
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends putty-tools && rm -rf /var/lib/apt/lists/* && useradd --system --uid 10001 tunnel
 USER 10001
-ENTRYPOINT ["ssh", "-N", "-L", "127.0.0.1:13306:192.168.1.10:3306", "-i", "/run/ssh/ssh-privatekey", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=/run/ssh/known_hosts", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3", "-o", "ExitOnForwardFailure=yes", "hkl@192.168.1.100"]
+ENTRYPOINT ["plink", "-batch", "-N", "-L", "127.0.0.1:13306:192.168.1.10:3306", "-i", "/run/ssh/ssh-privatekey", "-hostkey", "ecdsa-sha2-nistp256 256 SHA256:hJJ+ypTYY9lFI4xkU/Sd/Zk4WtRhZ8bNt9yoMHL1iLE", "hkl@192.168.1.100"]
