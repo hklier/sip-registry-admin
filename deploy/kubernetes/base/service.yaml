@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sip-registry-admin
+  namespace: sip-registry-admin
+  labels:
+    app.kubernetes.io/name: sip-registry-admin
+spec:
+  # The cluster LoadBalancer provider assigns an external IP address.
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: sip-registry-admin
+  ports:
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: https

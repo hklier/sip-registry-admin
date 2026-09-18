@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sip-registry-admin
+  namespace: sip-registry-admin
+  labels:
+    app.kubernetes.io/name: sip-registry-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sip-registry-admin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sip-registry-admin
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: 192.168.2.240:5000/sip-registry-admin:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: https
+              containerPort: 8443
+          env:
+            - name: SIP_REALM
+              value: occassip.test
+            - name: MARIADB_CREDENTIALS_FILE
+              value: /run/secrets/mariadb-credentials
+          envFrom:
+            - secretRef:
+                name: sip-registry-admin-auth
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          volumeMounts:
+            - name: temporary-files
+              mountPath: /tmp
+            - name: tls
+              mountPath: /run/tls
+              readOnly: true
+            - name: database-credentials
+              mountPath: /run/secrets
+              readOnly: true
+          readinessProbe:
+            httpGet: { scheme: HTTPS, path: /healthz, port: https }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { scheme: HTTPS, path: /healthz, port: https }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 192Mi }
+      volumes:
+        - name: temporary-files
+          emptyDir:
+            medium: Memory
+        - name: tls
+          secret:
+            secretName: sip-registry-admin-tls
+        - name: database-credentials
+          secret:
+            secretName: sip-registry-admin-db
