@@ -15,18 +15,23 @@ spec:
       labels:
         app.kubernetes.io/name: sip-registry-admin
     spec:
-      automountServiceAccountToken: false
+      serviceAccountName: sip-registry-admin
+      automountServiceAccountToken: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: web
-          image: 192.168.2.240:5000/sip-registry-admin:1.0.1
+          image: 192.168.2.240:5000/sip-registry-admin:1.0.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: https
               containerPort: 8443
           env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: SIP_REALM
               value: occassip.test
             - name: MARIADB_CREDENTIALS_FILE

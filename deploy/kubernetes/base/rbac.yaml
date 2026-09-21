@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sip-registry-admin
+  namespace: sip-registry-admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sip-registry-admin-password
+  namespace: sip-registry-admin
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["sip-registry-admin-auth"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sip-registry-admin-password
+  namespace: sip-registry-admin
+subjects:
+  - kind: ServiceAccount
+    name: sip-registry-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sip-registry-admin-password

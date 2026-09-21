@@ -3,9 +3,13 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import re
+import ssl
+import threading
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 import pymysql
 from flask import Flask, Response, jsonify, render_template, request
@@ -15,6 +19,8 @@ from pymysql.cursors import DictCursor
 APP = Flask(__name__)
 EXTENSION_RE = re.compile(r"^1\d{3}$")
 ENABLED_VALUES = {"Y", "N"}
+PASSWORD_LOCK = threading.Lock()
+RUNTIME_ADMIN_PASSWORD: str | None = None
 
 
 def credential_config() -> dict[str, object]:
@@ -68,15 +74,44 @@ def validate_password(value: object, required: bool) -> str:
     return password
 
 
-def require_admin():
+def admin_credentials() -> tuple[str, str]:
+    """Read the mounted Secret, preserving a newly changed value immediately."""
+    global RUNTIME_ADMIN_PASSWORD
     configured_user = os.environ.get("ADMIN_USERNAME", "")
     configured_password = os.environ.get("ADMIN_PASSWORD", "")
+    with PASSWORD_LOCK:
+        return configured_user, RUNTIME_ADMIN_PASSWORD or configured_password
+
+
+def require_admin():
+    configured_user, configured_password = admin_credentials()
     if not configured_user or not configured_password:
         return jsonify(error="The admin UI authentication has not been configured."), 503
     supplied = request.authorization
     if not supplied or not hmac.compare_digest(supplied.username or "", configured_user) or not hmac.compare_digest(supplied.password or "", configured_password):
         return Response("Authentication required", 401, {"WWW-Authenticate": 'Basic realm="SIP Registry Administration"'})
     return None
+
+
+def update_admin_password(password: str) -> None:
+    """Patch only this application's Kubernetes Secret via its service account."""
+    global RUNTIME_ADMIN_PASSWORD
+    token_path = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+    ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    namespace = os.environ.get("POD_NAMESPACE", "sip-registry-admin")
+    payload = json.dumps({"stringData": {"ADMIN_PASSWORD": password}}).encode("utf-8")
+    request_to_api = Request(
+        f"https://kubernetes.default.svc/api/v1/namespaces/{namespace}/secrets/sip-registry-admin-auth",
+        payload, method="PATCH", headers={
+            "Authorization": f"Bearer {token_path.read_text(encoding='utf-8').strip()}",
+            "Content-Type": "application/merge-patch+json", "Accept": "application/json",
+        },
+    )
+    context = ssl.create_default_context(cafile=ca_path)
+    with urlopen(request_to_api, context=context, timeout=10):
+        pass
+    with PASSWORD_LOCK:
+        RUNTIME_ADMIN_PASSWORD = password
 
 
 @APP.before_request
@@ -106,6 +141,29 @@ def healthz():
 @APP.get("/")
 def index():
     return render_template("index.html", realm=realm())
+
+
+@APP.post("/api/login-password")
+def change_login_password():
+    payload = request.get_json(silent=True) or {}
+    current = str(payload.get("currentPassword", ""))
+    new = str(payload.get("newPassword", ""))
+    confirmation = str(payload.get("confirmPassword", ""))
+    _, active_password = admin_credentials()
+    if not hmac.compare_digest(current, active_password):
+        return jsonify(error="The current WebGUI password is incorrect."), 400
+    if new != confirmation:
+        return jsonify(error="The new password confirmation does not match."), 400
+    if not 12 <= len(new) <= 128 or new != new.strip() or any(ord(character) < 32 for character in new):
+        return jsonify(error="Use a password between 12 and 128 characters without leading or trailing spaces."), 400
+    if hmac.compare_digest(current, new):
+        return jsonify(error="The new password must be different from the current password."), 400
+    try:
+        update_admin_password(new)
+    except Exception:
+        APP.logger.exception("Unable to update WebGUI password")
+        return jsonify(error="The WebGUI password could not be updated."), 500
+    return jsonify(message="Password changed. Reload the page and sign in with the new password.")
 
 
 @APP.get("/api/users")
