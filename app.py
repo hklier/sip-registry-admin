@@ -96,8 +96,8 @@ def require_admin():
 def update_admin_password(password: str) -> None:
     """Patch only this application's Kubernetes Secret via its service account."""
     global RUNTIME_ADMIN_PASSWORD
-    token_path = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
-    ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    token_path = Path(os.environ.get("KUBERNETES_TOKEN_FILE", "/run/kube-api/token"))
+    ca_path = os.environ.get("KUBERNETES_CA_FILE", "/run/kube-api/ca.crt")
     namespace = os.environ.get("POD_NAMESPACE", "sip-registry-admin")
     payload = json.dumps({"stringData": {"ADMIN_PASSWORD": password}}).encode("utf-8")
     request_to_api = Request(
