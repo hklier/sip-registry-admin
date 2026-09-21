@@ -1,4 +1,4 @@
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends putty-tools && rm -rf /var/lib/apt/lists/* && useradd --system --uid 10001 tunnel
 USER 10001
-ENTRYPOINT ["plink", "-batch", "-N", "-L", "127.0.0.1:13306:192.168.1.10:3306", "-i", "/run/ssh/ssh-privatekey", "-hostkey", "SHA256:hJJ+ypTYY9lFI4xkU/Sd/Zk4WtRhZ8bNt9yoMHL1iLE", "-hostkey", "SHA256:eTV17H8oJ5TwVX0DN+NmSTrFSeuUcbJUSJ6H9IT3L14", "-hostkey", "SHA256:xzOGhhF6sxv8nwbm7nz5eM47Qn/0v0nwn66Irn5jghE", "hkl@192.168.1.100"]
+ENTRYPOINT ["plink", "-batch", "-N", "-L", "127.0.0.1:13306:192.168.1.100:3306", "-i", "/run/ssh/ssh-privatekey", "-hostkey", "SHA256:hJJ+ypTYY9lFI4xkU/Sd/Zk4WtRhZ8bNt9yoMHL1iLE", "-hostkey", "SHA256:eTV17H8oJ5TwVX0DN+NmSTrFSeuUcbJUSJ6H9IT3L14", "-hostkey", "SHA256:xzOGhhF6sxv8nwbm7nz5eM47Qn/0v0nwn66Irn5gjhE", "hkl@192.168.1.100"]
