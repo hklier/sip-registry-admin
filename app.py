@@ -140,7 +140,7 @@ def healthz():
 
 @APP.get("/")
 def index():
-    return render_template("index.html", realm=realm())
+    return render_template("index.html", realm=realm(), admin_username=admin_credentials()[0])
 
 
 @APP.post("/api/login-password")

@@ -7,4 +7,4 @@ resources:
   - rbac.yaml
 images:
   - name: 192.168.2.240:5000/sip-registry-admin
-    newTag: 1.0.2
+    newTag: 1.0.3
